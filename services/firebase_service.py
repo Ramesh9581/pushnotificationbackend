@@ -91,14 +91,18 @@ def send_fcm_notification(
     body: str,
     screen_name: str,
     extra_data: Optional[Dict[str, Any]] = None,
+    platform: str = "web",
 ) -> Dict[str, Any]:
     """
     Send a push notification to a single FCM token.
 
-    The notification payload includes:
-      - Standard visible notification (title + body)
-      - Data payload with screen_name + any extra_data so the
-        frontend service-worker can navigate to the correct screen on tap.
+    Behaviour differs by platform:
+      - web:     data-only WebpushConfig (no notification field) so the service
+                 worker always controls the notification and navigation data is
+                 available in the notificationclick handler.
+      - android: AndroidConfig with both a Notification block (so the OS shows
+                 it automatically when the app is background/killed) AND a data
+                 payload (so the app can navigate on tap).
 
     Returns:
         {"success": True,  "message_id": "<fcm-message-id>"}
@@ -108,7 +112,6 @@ def send_fcm_notification(
         return {"success": False, "error": "Firebase not initialised"}
 
     # Build data dict — all values MUST be plain strings for FCM.
-    # Do NOT json.dumps strings — keep them as-is so the SW receives clean values.
     data_payload: Dict[str, str] = {
         "screen_name": screen_name,
         "title":       title,
@@ -116,21 +119,37 @@ def send_fcm_notification(
     }
     if extra_data:
         for k, v in extra_data.items():
-            # Convert to string but never double-encode a plain string
             data_payload[str(k)] = str(v) if not isinstance(v, str) else v
 
-    # Use a DATA-ONLY webpush message (no notification field).
-    # This forces the SW onBackgroundMessage handler to always run,
-    # which means `data` is always available in the notificationclick handler.
-    # If we include a `notification` field, Chrome shows it natively and
-    # the click handler receives no data — navigation breaks.
-    message = messaging.Message(
-        data=data_payload,
-        token=token,
-        webpush=messaging.WebpushConfig(
-            headers={"Urgency": "high"},
-        ),
-    )
+    if platform == "android":
+        # Android: include a visible Notification so the OS shows it when the
+        # app is in background/killed. Data payload is also included so the
+        # app can deep-link on tap via onNotificationOpenedApp / getInitialNotification.
+        message = messaging.Message(
+            data=data_payload,
+            token=token,
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    title=title,
+                    body=body,
+                    sound="default",
+                    # channel_id must match a channel created in the app.
+                    # React Native Firebase auto-creates a default channel.
+                    channel_id="default",
+                ),
+            ),
+        )
+    else:
+        # Web: data-only message — service worker handles display so navigation
+        # data is always available in the notificationclick handler.
+        message = messaging.Message(
+            data=data_payload,
+            token=token,
+            webpush=messaging.WebpushConfig(
+                headers={"Urgency": "high"},
+            ),
+        )
 
     try:
         message_id = messaging.send(message)

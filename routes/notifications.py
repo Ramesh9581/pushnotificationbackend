@@ -83,13 +83,14 @@ def send_notification(
     failed_count = 0
 
     for device in tokens:
-        # 2. Send via Firebase
+        # 2. Send via Firebase — pass platform so the right FCM config is used
         fcm_result = send_fcm_notification(
             token       = device.token,
             title       = payload.title,
             body        = payload.message,
             screen_name = payload.screen_name,
             extra_data  = payload.data,
+            platform    = device.platform,
         )
 
         success = fcm_result.get("success", False)
