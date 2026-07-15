@@ -18,7 +18,6 @@ env/
 
 # Environment / secrets
 .env
-firebase-service-account.json
 
 # IDE
 .vscode/
