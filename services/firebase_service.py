@@ -4,7 +4,6 @@ Initialises the Firebase Admin SDK (once) and exposes a helper that sends
 a single FCM web-push notification.
 """
 
-import json
 import os
 from typing import Any, Dict, Optional
 
