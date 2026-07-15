@@ -14,6 +14,9 @@ class Settings:
     FIREBASE_SERVICE_ACCOUNT_PATH: str = os.getenv(
         "FIREBASE_SERVICE_ACCOUNT_PATH", "firebase-service-account.json"
     )
+    FIREBASE_SERVICE_ACCOUNT_JSON: str = os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_JSON", ""
+    )
     API_KEY: str = os.getenv("API_KEY", "")
 
 
